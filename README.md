@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Bengkel Antrian
 
 Sistem antrian servis kendaraan yang dibangun dengan Next.js App Router, TypeScript, Tailwind CSS, Auth.js, Prisma, dan SQLite untuk development.
@@ -82,3 +83,6 @@ src/proxy.ts             Pembatasan akses route berdasarkan role
 - Walk-in dibuat admin untuk tanggal hari ini saat bengkel buka, dengan memilih customer dan kendaraan yang sudah terdaftar. Ini menjaga relasi tiket dan riwayat servis tetap konsisten.
 - Halaman publik `/display` dan API statusnya hanya menampilkan nomor antrian, layanan, dan mekanik; data pribadi pelanggan tidak ditayangkan. Display memperbarui data setiap 8 detik.
 - Laporan harian, mingguan (Senin–Minggu), dan bulanan dapat diekspor sebagai CSV. Endpoint ekspor memerlukan akun admin aktif.
+=======
+# Antrian-bengkel-nusantara
+>>>>>>> 8a63e8c8f261b6203589f3a3876860a3b25c0238
