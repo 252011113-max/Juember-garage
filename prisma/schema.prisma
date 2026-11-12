@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String           @id @default(cuid())
+  name                  String
+  email                 String           @unique
+  phone                 String?
+  passwordHash          String
+  role                  String           @default("CUSTOMER")
+  isActive              Boolean          @default(true)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  vehicles              Vehicle[]
+  customerTickets       QueueTicket[]    @relation("CustomerTickets")
+  assignedTickets       QueueTicket[]    @relation("MechanicTickets")
+  statusChanges         QueueStatusLog[] @relation("StatusChangedBy")
+  queueRequests         QueueRequest[]   @relation("CustomerQueueRequests")
+  reviewedQueueRequests QueueRequest[]   @relation("QueueRequestReviewer")
+
+  @@index([role, isActive])
+}
+
+model Vehicle {
+  id                 String               @id @default(cuid())
+  ownerId            String
+  plateNumber        String               @unique
+  type               String
+  brand              String
+  model              String
+  year               Int
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  owner              User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tickets            QueueTicket[]
+  activeQueueEntries ActiveVehicleQueue[]
+  queueRequests      QueueRequest[]
+
+  @@index([ownerId])
+}
+
+model ServiceType {
+  id               String         @id @default(cuid())
+  name             String         @unique
+  estimatedMinutes Int
+  basePrice        Int
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  tickets          QueueTicket[]
+  queueRequests    QueueRequest[]
+}
+
+model QueueTicket {
+  id                 String              @id @default(cuid())
+  queueNumber        String
+  queueDate          DateTime
+  customerId         String
+  vehicleId          String
+  serviceTypeId      String
+  mechanicId         String?
+  complaint          String
+  status             String              @default("WAITING")
+  notes              String?
+  partsUsed          String              @default("[]")
+  laborCost          Int?
+  partsCost          Int?
+  totalCost          Int?
+  calledAt           DateTime?
+  startedAt          DateTime?
+  finishedAt         DateTime?
+  source             String              @default("ONLINE")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  customer           User                @relation("CustomerTickets", fields: [customerId], references: [id], onDelete: Restrict)
+  vehicle            Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  serviceType        ServiceType         @relation(fields: [serviceTypeId], references: [id], onDelete: Restrict)
+  mechanic           User?               @relation("MechanicTickets", fields: [mechanicId], references: [id], onDelete: SetNull)
+  statusLogs         QueueStatusLog[]
+  activeVehicleEntry ActiveVehicleQueue?
+  queueRequest       QueueRequest?       @relation("ApprovedQueueTicket")
+
+  @@unique([queueDate, queueNumber])
+  @@index([queueDate, status, createdAt])
+  @@index([customerId, queueDate])
+  @@index([mechanicId, queueDate, status])
+  @@index([vehicleId, queueDate, status])
+}
+
+model QueueCounter {
+  id         String   @id @default(cuid())
+  queueDate  DateTime @unique
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @updatedAt
+}
+
+model ActiveVehicleQueue {
+  vehicleId String
+  queueDate DateTime
+  ticketId  String?       @unique
+  requestId String?       @unique
+  createdAt DateTime      @default(now())
+  vehicle   Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  ticket    QueueTicket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  request   QueueRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@id([vehicleId, queueDate])
+}
+
+model QueueRequest {
+  id                 String              @id @default(cuid())
+  queueNumber        String
+  queueDate          DateTime
+  customerId         String
+  vehicleId          String
+  serviceTypeId      String
+  complaint          String
+  status             String              @default("PENDING")
+  approvedTicketId   String?             @unique
+  reviewedById       String?
+  reviewedAt         DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  customer           User                @relation("CustomerQueueRequests", fields: [customerId], references: [id], onDelete: Restrict)
+  vehicle            Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  serviceType        ServiceType         @relation(fields: [serviceTypeId], references: [id], onDelete: Restrict)
+  reviewedBy         User?               @relation("QueueRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  approvedTicket     QueueTicket?        @relation("ApprovedQueueTicket", fields: [approvedTicketId], references: [id], onDelete: SetNull)
+  activeVehicleEntry ActiveVehicleQueue?
+
+  @@unique([queueDate, queueNumber])
+  @@index([queueDate, status, createdAt])
+  @@index([customerId, queueDate])
+}
+
+model QueueStatusLog {
+  id          String      @id @default(cuid())
+  ticketId    String
+  fromStatus  String?
+  toStatus    String
+  changedById String
+  createdAt   DateTime    @default(now())
+  ticket      QueueTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  changedBy   User        @relation("StatusChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, createdAt])
+}
+
+model WorkshopSetting {
+  id         String   @id @default("default")
+  openTime   String   @default("08:00")
+  closeTime  String   @default("17:00")
+  dailyQuota Int      @default(30)
+  holidays   String   @default("[]")
+  updatedAt  DateTime @updatedAt
+}
